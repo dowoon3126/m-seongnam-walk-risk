@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 # 1. 페이지 기본 설정
 st.set_page_config(page_title="성남시 보행 위험도 대시보드", layout="wide")
 st.markdown("""
-    <h2 style="font-size: 26px; font-weight: bold; margin-bottom: 5px;">
+    <h2 style="font-size: 28px; font-weight: bold; margin-bottom: 5px;">
         성남시 보행 위험도 대시보드
     </h2>
 """, unsafe_allow_html=True)
