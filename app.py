@@ -7,6 +7,23 @@ import plotly.graph_objects as go
 
 # 1. 페이지 기본 설정
 st.set_page_config(page_title="성남시 보행 위험도 대시보드", layout="wide")
+# 1. 배경을 강제로 하얀색으로 고정하는 CSS
+st.markdown("""
+    <style>
+    /* 메인 배경 하얀색 */
+    .stApp {
+        background-color: #FFFFFF;
+    }
+    /* 상단 헤더 영역 하얀색 */
+    header[data-testid="stHeader"] {
+        background-color: #FFFFFF;
+    }
+    /* 사이드바가 있다면 사이드바 배경도 하얀색 (선택사항) */
+    [data-testid="stSidebar"] {
+        background-color: #FFFFFF;
+    }
+    </style>
+""", unsafe_allow_html=True)
 st.markdown("""
     <h2 style="font-size: 30px; font-weight: bold; margin-bottom: 5px;">
         성남시 보행 위험도 대시보드
