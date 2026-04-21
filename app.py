@@ -27,8 +27,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# [수정] 최소 폰트 크기를 키우고(1.5rem), 자간을 좁혀서(-1.5px) 모바일에서 작아보이지 않게 조정
-st.markdown('<h2 style="margin-top: 0px; margin-bottom: 5px; white-space: nowrap; font-size: clamp(1.5rem, 4.5vw, 2.2rem); letter-spacing: -1.5px;">성남시 보행 위험도 대시보드</h2>', unsafe_allow_html=True)
+# [수정] 모바일 화면 가로 폭에 꽉 차도록 vw(뷰포트 너비) 비율을 8vw로 대폭 키우고, 자간을 더 좁힘(-2px)
+st.markdown('<h2 style="margin-top: 0px; margin-bottom: 5px; white-space: nowrap; font-size: clamp(1.5rem, 8vw, 2.5rem); letter-spacing: -2px;">성남시 보행 위험도 대시보드</h2>', unsafe_allow_html=True)
 st.info("지도에서 동네를 클릭하고 아래로 스크롤하여 진단서를 확인하세요!")
 
 # 2. 데이터 불러오기 (한글 깨짐 방지)
