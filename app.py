@@ -39,7 +39,6 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-st.markdown("""
 st.info("지도 상의 지역을 클릭하시면 하단에 맞춤형 분석 리포트가 생성됩니다.")
 
 # 2. 데이터 불러오기 (한글 깨짐 방지)
