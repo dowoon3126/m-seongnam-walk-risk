@@ -111,13 +111,17 @@ if map_loaded:
                 st.subheader(f"[{clicked_dong}] 진단서")
                 st.write(f"**종합 위험도 {dong_data['위험도 순위']}위** ({dong_data['최종 보행 위험도 점수']}점)")
                 
-               # 방사형 차트
+               # 방사형 차트 데이터 준비
                 categories = ['평균 기울기', '골목길 비율', '교통약자 거주 인구 밀도', '교통약자 유발 시설 밀도', '안전 시설 밀도']
                 values = [dong_data[c] for c in categories]
                 
+                # 💡 [핵심] 마지막 점과 첫 점을 잇기 위해 첫 번째 데이터를 끝에 추가합니다.
+                categories = categories + [categories[0]]
+                values = values + [values[0]]
+                
                 fig = go.Figure()
                 
-                # 1. 차트 그리기
+                # 차트 그리기
                 fig.add_trace(go.Scatterpolar(
                     r=values, 
                     theta=categories, 
@@ -132,10 +136,20 @@ if map_loaded:
                         radialaxis=dict(
                             visible=True, 
                             range=[0, 100], 
-                            tickfont=dict(color='#333333', size=11, weight='bold') # 👈 [수정] 0~100 기준 숫자를 진한 먹색(#333333)과 굵은 글씨로!
+                            # 1. 💡 숫자를 표시할 지점만 명시 (100 제외)
+                            tickvals=[0, 20, 40, 60, 80], 
+                            # 2. 💡 각 지점에 써줄 글자 명시
+                            ticktext=['0', '20', '40', '60', '80'],
+                            # 3. 💡 핵심: 100 위치에 자동으로 붙는 마지막 라벨을 강제로 숨김
+                            showticklabels=True,
+                            # 4. 스타일 설정
+                            tickfont=dict(color='#333333', size=11, weight='bold'),
+                            gridcolor='#eeeeee',
+                            # 마지막 눈금선이 튀어나오지 않게 설정
+                            ticks=""
                         ),
                         angularaxis=dict(
-                            tickfont=dict(color='#ffffff', size=10, weight='bold') # 👈 [수정] 바깥쪽 글씨를 완전한 검은색(#000000)으로 더 또렷하게!
+                            tickfont=dict(color='#ffffff', size=10, weight='bold')
                         )
                     ), 
                     showlegend=False, 
