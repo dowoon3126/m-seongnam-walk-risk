@@ -88,9 +88,6 @@ if map_loaded:
                 <span>안전 구역</span>
                 <span>위험 구역</span>
             </div>
-            <div style="background: linear-gradient(to right, #fee5d9, #fcae91, #fb6a4a, #de2d26, #a50f15); 
-                        height: 12px; border-radius: 10px; margin-bottom: 15px;"></div>
-        """, unsafe_allow_html=True)
         
         # 2. 지도의 중심점 계산 및 맵 생성 (모바일 스크롤 쾌적화)
         center_lat, center_lon = merged.geometry.centroid.y.mean(), merged.geometry.centroid.x.mean()
