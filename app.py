@@ -27,8 +27,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 제목과 아래 요소 간의 간격(margin) 최소화
-st.markdown('<h2 style="margin-top: 0px; margin-bottom: 5px;">성남시 보행 위험도 대시보드</h2>', unsafe_allow_html=True)
+# [수정] 모바일 화면에서 제목이 두 줄로 넘어가지 않도록 자동 크기 조절(clamp) 및 줄바꿈 금지(nowrap) 적용
+st.markdown('<h2 style="margin-top: 0px; margin-bottom: 5px; white-space: nowrap; font-size: clamp(1.2rem, 5vw, 2rem); letter-spacing: -1px;">성남시 보행 위험도 대시보드</h2>', unsafe_allow_html=True)
 st.info("지도에서 동네를 클릭하고 아래로 스크롤하여 진단서를 확인하세요!")
 
 # 2. 데이터 불러오기 (한글 깨짐 방지)
@@ -162,7 +162,7 @@ if map_loaded:
                         ),
                         angularaxis=dict(
                             color='white',                  # 항목 이름 글자색을 흰색으로 유지
-                            tickfont=dict(size=10)          # [수정] 카테고리 글씨 크기를 10pt로 설정
+                            tickfont=dict(size=10)          # 카테고리 글씨 크기를 10pt로 설정
                         )
                     ), 
                     showlegend=False, 
