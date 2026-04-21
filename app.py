@@ -39,6 +39,7 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+st.markdown("""
     <h2 style="font-size: 30px; font-weight: bold; margin-bottom: 5px;">
         성남시 보행 위험도 대시보드
     </h2>
