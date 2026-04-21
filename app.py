@@ -23,7 +23,7 @@ st.markdown("""
     h2 {
         margin-top: 0px !important;     /* 마이너스 제거! */
         padding-top: 0px !important;
-        font-size: 24px !important;     /* 크기 다시 고정 */
+        font-size: 30x !important;     /* 크기 다시 고정 */
         color: white !important;
     }
 
