@@ -5,39 +5,51 @@ import folium
 from streamlit_folium import st_folium
 import plotly.graph_objects as go
 
-# 1. 페이지 기본 설정 (와이드 레이아웃 유지)
+# 1. 페이지 기본 설정 (와이드 레이아웃 유지 - 모바일에서는 자동으로 세로로 쌓임)
 st.set_page_config(page_title="성남시 보행 위험도 대시보드", layout="wide")
 
-# 강제 다크모드 지정 색상(#0E1117) 설정 및 상단 여백/제목 간격 축소
 st.markdown("""
     <style>
-    /* 전체 배경을 #0E1117, 텍스트를 흰색으로 강제 고정 */
-    .stApp {
-        background-color: #0E1117;
-        color: #ffffff;
-    }
-    /* Streamlit 기본 상단 여백 줄이기 */
-    .block-container {
-        padding-top: 2rem !important;
-    }
-    /* HTML 요소들 글자색 흰색으로 강제 */
-    p, div, span, h1, h2, h3, h4, h5, h6 {
-        color: #ffffff;
-    }
+    .stApp { background-color: #0E1117; color: #ffffff; }
+    .block-container { padding-top: 2rem !important; }
+    p, div, span, h1, h2, h3, h4, h5, h6, li { color: #ffffff; }
     </style>
 """, unsafe_allow_html=True)
 
-# [수정] 모바일 화면 가로 폭에 꽉 차도록 vw(뷰포트 너비) 비율을 8vw로 대폭 키우고, 자간을 더 좁힘(-2px)
+# [모바일 최적화] 폰 화면 가로 폭에 꽉 차도록 vw(뷰포트 너비) 비율 적용, 줄바꿈 방지(nowrap)
 st.markdown('<h2 style="margin-top: 0px; margin-bottom: 5px; white-space: nowrap; font-size: clamp(1.5rem, 8vw, 2.5rem); letter-spacing: -2px;">성남시 보행 위험도 대시보드</h2>', unsafe_allow_html=True)
-st.info("지도 상의 지역을 클릭하시면 하단에 맞춤형 분석 리포트가 생성됩니다.")
 
-# 2. 데이터 불러오기 (한글 깨짐 방지)
+# [최종본 로직] 아이콘 없는 깔끔한 정보 알림 박스 (CSS)
+def render_callout(text, type='info'):
+    colors = {
+        'error': ('#ff4b4b', 'rgba(255, 75, 75, 0.1)'),
+        'warning': ('#ffa421', 'rgba(255, 164, 33, 0.1)'),
+        'success': ('#21c354', 'rgba(33, 195, 84, 0.1)'),
+        'info': ('#60b4ff', 'rgba(96, 180, 255, 0.1)')
+    }
+    border_color, bg_color = colors[type]
+    st.markdown(f"""
+    <div style="padding: 16px; border-radius: 8px; background-color: {bg_color}; border-left: 6px solid {border_color}; margin-bottom: 12px;">
+        <span style="color: white; font-size: 15px; font-weight: 500;">{text}</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+render_callout("지도 상의 행정동을 터치하시면 하단에 맞춤형 진단 리포트가 생성됩니다.", "info")
+
 @st.cache_data
 def load_data():
-    try:
-        return pd.read_csv("score.csv", encoding='utf-8')
-    except UnicodeDecodeError:
-        return pd.read_csv("score.csv", encoding='euc-kr')
+    filenames = ["score.csv", "성남시_최종보행위험도_성적표_최종.csv", "성남시_최종보행위험도_성적표.csv", "2차 전처리.xlsx - Sheet1.csv"]
+    for fname in filenames:
+        try:
+            return pd.read_csv(fname, encoding='utf-8-sig')
+        except FileNotFoundError:
+            continue
+        except UnicodeDecodeError:
+            try:
+                return pd.read_csv(fname, encoding='euc-kr')
+            except Exception:
+                continue
+    raise FileNotFoundError("데이터 파일을 찾을 수 없습니다.")
 
 @st.cache_data
 def load_map():
@@ -45,32 +57,32 @@ def load_map():
         gdf = gpd.read_file("BND_ADM_DONG_PG.shp", encoding='euc-kr')
     except UnicodeDecodeError:
         gdf = gpd.read_file("BND_ADM_DONG_PG.shp", encoding='utf-8')
-    
-    # 웹 지도(Folium) 규격에 맞게 좌표계 변환
     if gdf.crs is None:
         gdf.set_crs(epsg=5179, inplace=True)
     gdf = gdf.to_crs(epsg=4326)
     return gdf
 
-df = load_data()
+try:
+    df = load_data()
+    data_loaded = True
+except Exception as e:
+    render_callout(f"데이터 로드 오류: {e}", "error")
+    data_loaded = False
+
 try:
     gdf = load_map()
     map_loaded = True
 except Exception as e:
-    st.error("'BND_ADM_DONG_PG.shp' 파일과 짝꿍 파일들(.shx, .dbf, .prj)이 같은 폴더에 있는지 확인해주세요!")
+    render_callout("'BND_ADM_DONG_PG.shp' 연관 파일 확인 요망", "warning")
     map_loaded = False
 
-if map_loaded:
-    # 코랩에서 찾았던 정확한 동네 이름 열(ADM_NM) 고정 적용
+if data_loaded and map_loaded:
     map_col = 'ADM_NM'
-        
-    # 지도와 데이터 병합
     merged = gdf.merge(df, left_on=map_col, right_on='행정동', how='inner')
     
     col_map, col_info = st.columns([1.5, 1])
     
     with col_map:
-        # 1. 폰 화면에 맞춰 자동으로 늘어나는 예쁜 컬러바 그리기
         st.markdown("""
             <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; color: #aaaaaa; margin-bottom: 5px;">
                 <span>안전 구역</span>
@@ -80,18 +92,17 @@ if map_loaded:
                         height: 12px; border-radius: 10px; margin-bottom: 15px;"></div>
         """, unsafe_allow_html=True)
         
-        # 2. 지도의 중심점 계산 및 맵 생성 (모바일 스크롤 쾌적화)
         center_lat, center_lon = merged.geometry.centroid.y.mean(), merged.geometry.centroid.x.mean()
+        
+        # [모바일 최적화] 스크롤 시 지도가 움직이는 것 방지 (dragging, scrollWheelZoom 해제)
         m = folium.Map(
-            location=[center_lat, center_lon], 
-            zoom_start=11.3,         
-            tiles="CartoDB positron",
-            dragging=False,          # 스크롤 방해 금지 (모바일 쾌적)
+            location=[center_lat, center_lon], zoom_start=11.3,         
+            tiles="CartoDB positron", 
+            dragging=False,          
             scrollWheelZoom=False,   
-            zoom_control=True        # 우측 상단 줌 버튼 유지
+            zoom_control=True        
         )
         
-        # 3. 지도 붉은색 칠하기
         choro = folium.Choropleth(
             geo_data=merged, data=merged,
             columns=['행정동', '최종 보행 위험도 점수'],
@@ -99,14 +110,11 @@ if map_loaded:
             fill_color='Reds', fill_opacity=0.7, line_opacity=0.3
         )
         
-        # 4. 기존 못생긴 범례 강제 제거
         for key in list(choro._children.keys()):
             if key.startswith('color_map'):
                 del(choro._children[key])
-                
         choro.add_to(m)
         
-        # 5. 클릭 인식을 위한 투명 레이어
         folium.GeoJson(
             merged,
             style_function=lambda x: {'fillColor': '#000', 'color':'#000', 'fillOpacity': 0.0, 'weight': 0},
@@ -114,12 +122,10 @@ if map_loaded:
             highlight_function=lambda x: {'weight':3, 'color':'#ff0000', 'fillOpacity': 0.2} 
         ).add_to(m)
         
-        # 6. 화면 출력
         map_output = st_folium(m, use_container_width=True, height=350)
         
     with col_info:
         clicked_dong = None
-        # 클릭 이벤트 감지
         if map_output and map_output.get("last_active_drawing"):
             clicked_dong = map_output["last_active_drawing"]["properties"][map_col]
             
@@ -128,14 +134,46 @@ if map_loaded:
             if len(match_df) > 0:
                 dong_data = match_df.iloc[0]
                 
-                st.subheader(f"[{clicked_dong}] 진단서")
-                st.write(f"**종합 위험도 {dong_data['위험도 순위']}위** ({dong_data['최종 보행 위험도 점수']}점)")
+                st.markdown("---")
+                st.markdown(f"### **[{clicked_dong}] 보행 안전 진단 리포트**")
+                st.markdown(f"**종합 위험도: {int(dong_data['위험도 순위'])}위** (위험 지수: {dong_data['최종 보행 위험도 점수']}점)")
                 
-                # 방사형 차트 데이터 준비
-                categories = ['평균 기울기', '골목길 비율', '교통약자 거주 인구 밀도', '교통약자 유발 시설 밀도', '안전 시설 밀도']
-                values = [dong_data[c] for c in categories]
+                def get_val(keywords):
+                    for c in dong_data.index:
+                        if any(k in c for k in keywords):
+                            return float(dong_data[c])
+                    return 0.0 
+
+                # [최종본 로직] 안전 및 CCTV 데이터 역산 적용
+                safety_score = get_val(['안전'])
+                safety_lack_score = 100 - safety_score if safety_score > 0 else 0
                 
-                # 마지막 빨간 선분을 연결하기 위해 첫 번째 데이터를 맨 끝에 복사해서 붙임 (도형 닫기)
+                cctv_score = get_val(['CCTV', '주차'])
+                cctv_lack_score = 100 - cctv_score if cctv_score > 0 else 0
+
+                values = [
+                    get_val(['기울기', '경사']),
+                    get_val(['골목길']),
+                    get_val(['인구', '거주']),
+                    get_val(['유발', '복지시설']),  
+                    cctv_lack_score,               
+                    get_val(['적치물', '장애물']),
+                    get_val(['연령', '노후', '나이', '건축물']),
+                    safety_lack_score              
+                ]
+                
+                # [최종본 로직] 행정/공공기관용 라벨링
+                categories = [
+                    '급경사 보행 취약도', 
+                    '보차혼용 위험도', 
+                    '고령 보행자 밀집도', 
+                    '교통약자 시설 집중도', 
+                    '불법주정차 단속 취약도', 
+                    '노상 적치물 위험도', 
+                    '가로 환경 노후도',
+                    '보행 안전 인프라 결핍도' 
+                ]
+                
                 categories_closed = categories + [categories[0]]
                 values_closed = values + [values[0]]
                 
@@ -148,45 +186,63 @@ if map_loaded:
                     line_color='red'
                 ))
                 
-                # 차트 배경색 설정 및 라벨링 커스텀
                 fig.update_layout(
-                    paper_bgcolor='rgba(0,0,0,0)',  # 차트 바깥쪽 배경 투명 (#0E1117이 비쳐보임)
+                    paper_bgcolor='rgba(0,0,0,0)',  
                     polar=dict(
-                        bgcolor='#1E2127',          # 차트 안쪽 원은 배경보다 살짝 밝은 다크톤으로 구분
+                        bgcolor='#1E2127',          
                         radialaxis=dict(
                             visible=True, 
                             range=[0, 100],
-                            tickvals=[0, 20, 40, 60, 80],   # 0부터 80까지만 표시 (100 제외)
+                            tickvals=[0, 20, 40, 60, 80],   
                             showticklabels=True,
-                            tickfont=dict(color='#cccccc')  # 어두운 배경에 잘 보이도록 숫자 색상을 밝은 회색으로 변경
+                            tickfont=dict(color='#cccccc')  
                         ),
                         angularaxis=dict(
-                            color='white',                  # 항목 이름 글자색을 흰색으로 유지
-                            tickfont=dict(size=10)          # 카테고리 글씨 크기를 10pt로 설정
+                            color='white',                  
+                            tickfont=dict(size=10)   # 모바일 화면을 위해 폰트 사이즈 소폭 조정       
                         )
                     ), 
                     showlegend=False, 
-                    margin=dict(l=80, r=80, t=40, b=40), # 좌우 여백 확보
+                    margin=dict(l=60, r=60, t=30, b=30), # 모바일 화면 좌우 여백 최적화
                     height=350
                 )
                 
-                # 차트 출력
                 st.plotly_chart(fig, use_container_width=True, config={
-                    'displayModeBar': False, # 거슬리는 상단 메뉴바 숨김
-                    'staticPlot': True       # 🔒 차트를 찌그러지지 않는 이미지 모드로 고정
+                    'displayModeBar': False, 
+                    'staticPlot': True       
                 })
                 
-                # 맞춤형 처방전 로직
-                st.markdown("**맞춤형 정책 제언**")
-                if dong_data['안전 시설 밀도'] < 30:
-                    st.error("**[안전 비상]** 제설함 및 보행자 펜스 확충 시급")
-                if dong_data['평균 기울기'] >= 70:
-                    st.warning("**[지형 한계]** 열선(발열매트) 설치 우선 검토")
-                if dong_data['골목길 비율'] >= 80:
-                    st.warning("**[보차혼용]** 미끄럼 방지 포장 및 스마트 보안등 필요")
-                if dong_data['안전 시설 밀도'] >= 50 and dong_data['평균 기울기'] < 50:
-                    st.success("인프라 양호 구역 (현행 유지보수 집중)")
+                st.markdown("### **맞춤형 정책 제언**")
+                
+                has_warnings = False
+                
+                if get_val(['기울기', '경사']) >= 70:
+                    render_callout("[지형 한계] 급경사 구간 열선(발열매트) 및 미끄럼 방지 포장 최우선 검토 요망", "error")
+                    has_warnings = True
+                if get_val(['골목길']) >= 70:
+                    render_callout("[보차혼용] 차량 속도 저감 기법 도입 및 보행자 우선도로 지정 필요", "warning")
+                    has_warnings = True
+                if get_val(['인구', '거주']) >= 70 or get_val(['유발', '복지시설']) >= 70:
+                    render_callout("[교통약자 집중] 노인 보호구역(Silver Zone) 지정 확대 및 관리 강화", "warning")
+                    has_warnings = True
+                if cctv_lack_score >= 70:
+                    render_callout("[행정 사각지대] 불법주정차 단속용 CCTV 추가 배치 및 스마트 볼라드 설치", "warning")
+                    has_warnings = True
+                if get_val(['적치물', '장애물']) >= 70:
+                    render_callout("[보행 방해물] 가로 환경 개선을 위한 노상 적치물 특별 단속 실시", "warning")
+                    has_warnings = True
+                if get_val(['연령', '노후', '나이', '건축물']) >= 70:
+                    render_callout("[환경 노후도] 범죄 및 사고 예방을 위한 스마트 안심 보안등 설치 요망", "warning")
+                    has_warnings = True
+                if safety_lack_score >= 70: 
+                    render_callout("[인프라 결핍] 보행자 펜스, 제설함 등 기초 안전 시설 확충 시급", "error")
+                    has_warnings = True
+                
+                if not has_warnings:
+                    if safety_score >= 50 and cctv_score >= 50:
+                        render_callout("[인프라 양호] 현행 보행 안전 인프라 유지보수 및 지속적인 모니터링 요망", "success")
+                    else:
+                        render_callout("전반적으로 보통 수준의 보행 환경을 유지하고 있음", "info")
                     
-            # 데이터가 없을 때만 경고 문구 출력
             else:
-                st.warning(f"선택하신 '{clicked_dong}' 데이터가 성적표에 없습니다.")
+                render_callout(f"선택하신 '{clicked_dong}' 행정동 데이터가 존재하지 않습니다.", "warning")
